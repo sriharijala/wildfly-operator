@@ -1,0 +1,11 @@
+apiVersion: "wildfly.banzaicloud.com/v1alpha1"
+kind: "WildflyAppServer"
+metadata:
+  name: "wildfly-example"
+  labels:
+    app: my-label
+spec:
+  nodeCount: 2
+  image: "banzaicloud/wildfly-demo:0.0.43"
+  labels:
+      app: my-label

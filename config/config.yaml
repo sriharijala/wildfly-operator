@@ -1,0 +1,3 @@
+apiVersion: wildfly.banzaicloud.com/v1alpha1
+kind: WildflyAppServer
+projectName: wildfly-operator
