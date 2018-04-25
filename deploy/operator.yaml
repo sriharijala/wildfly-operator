@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
         - name: wildfly-operator
-          image: banzaicloud/wildfly-operator
+          image: banzaicloud/wildfly-operator:0.0.3
           command:
           - wildfly-operator
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always

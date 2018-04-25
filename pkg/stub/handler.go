@@ -26,6 +26,8 @@ func NewHandler() handler.Handler {
 type Handler struct {
 }
 
+const APPLICATION_CONFIG string = "standalone-full-ha-k8s.xml"
+
 func (h *Handler) Handle(ctx types.Context, event types.Event) error {
 	fmt.Printf("Handle: %+v %+v\n", event, event.Object)
 	switch o := event.Object.(type) {
@@ -157,6 +159,9 @@ func getDeployment(cr *v1alpha1.WildflyAppServer) *appsv1.Deployment {
 								Value: labelSelector,
 							},
 						},
+						Args: []string{
+							"--server-config=" + APPLICATION_CONFIG,
+						},
 						Ports: []v1.ContainerPort{
 							{
 								ContainerPort: 8080,
@@ -212,6 +217,56 @@ func getDeployment(cr *v1alpha1.WildflyAppServer) *appsv1.Deployment {
 			},
 		},
 	}
+	if len(cr.Spec.ConfigMapName) > 0 && len(cr.Spec.StandaloneConfigKey) > 0 {
+		dep.Spec.Template.Spec.Volumes = []v1.Volume{
+			{
+				Name: "config-volume",
+				VolumeSource: v1.VolumeSource{
+					ConfigMap:  &v1.ConfigMapVolumeSource{
+						LocalObjectReference: v1.LocalObjectReference{
+							Name: cr.Spec.ConfigMapName,
+						},
+						Items: []v1.KeyToPath{
+							{
+								Key: cr.Spec.StandaloneConfigKey,
+								Path: APPLICATION_CONFIG,
+							},
+						},
+					},
+				},
+			},
+		}
+		dep.Spec.Template.Spec.Containers[0].VolumeMounts = []v1.VolumeMount{
+			{
+				Name: "config-volume",
+				MountPath: "/opt/jboss/wildfly/standalone/configuration/" + APPLICATION_CONFIG,
+				SubPath: APPLICATION_CONFIG,
+			},
+		}
+	}
+	false := true
+	dep.Spec.Template.Spec.Containers[0].Env = append(dep.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
+		Name: "JBOSS_ADMIN_USER",
+		ValueFrom: &v1.EnvVarSource{
+			SecretKeyRef: &v1.SecretKeySelector{
+				LocalObjectReference: v1.LocalObjectReference{Name: "jboss-secret"},
+				Key: "jboss-admin-user",
+				Optional: &false,
+			},
+		},
+	})
+
+	dep.Spec.Template.Spec.Containers[0].Env = append(dep.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
+		Name: "JBOSS_ADMIN_PASSWORD",
+		ValueFrom: &v1.EnvVarSource{
+			SecretKeyRef: &v1.SecretKeySelector{
+				LocalObjectReference: v1.LocalObjectReference{Name: "jboss-secret"},
+				Key: "jboss-admin-password",
+				Optional: &false,
+			},
+		},
+	})
+
 	setOwnerRefrence(dep, cr)
 	return dep
 }
@@ -234,16 +289,6 @@ func getLabels(r *v1alpha1.WildflyAppServer) map[string]string {
 		}
 	}
 	return labels
-}
-
-func getLabelsAsString(labels map[string]string) string {
-	var sb strings.Builder
-	for labelKey, labelValue := range labels {
-		sb.WriteString(labelKey)
-		sb.WriteString("=")
-		sb.WriteString(labelValue)
-	}
-	return sb.String()
 }
 
 func getService(cr *v1alpha1.WildflyAppServer) *v1.Service {
