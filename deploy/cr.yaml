@@ -1,3 +1,12 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: "wildfly-example"
+type: Opaque
+data:
+  wildfly-admin-user: "ZXN6ZW0="
+  wildfly-admin-password: "ZmFzem9t"
+---
 apiVersion: "wildfly.banzaicloud.com/v1alpha1"
 kind: "WildflyAppServer"
 metadata:
@@ -6,7 +15,7 @@ metadata:
     app: my-label
 spec:
   nodeCount: 2
-  image: "banzaicloud/wildfly-demo:0.0.51"
+  image: "banzaicloud/wildfly-jee-petstore:0.1.1"
   labels:
       app: my-label
   configMapName: standalone

@@ -29,5 +29,6 @@ type WildflyAppServerSpec struct {
 }
 
 type WildflyAppServerStatus struct {
-	Nodes []string `json:"nodes"`
+	Nodes             []string          `json:"nodes"`
+	ExternalAddresses map[string]string `json:"externalAddresses"`
 }

@@ -11,7 +11,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"strings"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"fmt"
 	"github.com/coreos/operator-sdk/pkg/sdk/query"
@@ -77,11 +76,23 @@ func (h *Handler) Handle(ctx types.Context, event types.Event) error {
 			}
 		}
 
-		// Create the Service for Infinispan
+		// Create LoadBalancer
 		ser := getService(o)
 		err = action.Create(ser)
 		if err != nil && !apierrors.IsAlreadyExists(err) {
 			return fmt.Errorf("failed to create service: %v", err)
+		}
+
+		externalAddress := make(map[string]string)
+		if len(ser.Spec.ExternalIPs) > 0 {
+			externalIp := ser.Spec.ExternalIPs[0]
+			for _, servicePort := range ser.Spec.Ports {
+				address := externalIp + ":" + string(servicePort.NodePort)
+				fmt.Printf("External address: %+v %+v\n", servicePort.Name, address)
+				externalAddress[servicePort.Name] = address
+			}
+		} else {
+			fmt.Printf("No external addresses bound!")
 		}
 	}
 	return nil
@@ -208,7 +219,7 @@ func getDeployment(cr *v1alpha1.WildflyAppServer) *appsv1.Deployment {
 						},
 						Resources: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
-								"cpu":    *resource.NewMilliQuantity(300, resource.BinarySI),
+								"cpu":    *resource.NewMilliQuantity(500, resource.BinarySI),
 								"memory": *resource.NewMilliQuantity(512, resource.BinarySI),
 							},
 						},
@@ -246,22 +257,22 @@ func getDeployment(cr *v1alpha1.WildflyAppServer) *appsv1.Deployment {
 	}
 	false := true
 	dep.Spec.Template.Spec.Containers[0].Env = append(dep.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-		Name: "JBOSS_ADMIN_USER",
+		Name: "WILDFLY_ADMIN_USER",
 		ValueFrom: &v1.EnvVarSource{
 			SecretKeyRef: &v1.SecretKeySelector{
-				LocalObjectReference: v1.LocalObjectReference{Name: "jboss-secret"},
-				Key: "jboss-admin-user",
+				LocalObjectReference: v1.LocalObjectReference{Name: cr.Name},
+				Key: "wildfly-admin-user",
 				Optional: &false,
 			},
 		},
 	})
 
 	dep.Spec.Template.Spec.Containers[0].Env = append(dep.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-		Name: "JBOSS_ADMIN_PASSWORD",
+		Name: "WILDFLY_ADMIN_PASSWORD",
 		ValueFrom: &v1.EnvVarSource{
 			SecretKeyRef: &v1.SecretKeySelector{
-				LocalObjectReference: v1.LocalObjectReference{Name: "jboss-secret"},
-				Key: "jboss-admin-password",
+				LocalObjectReference: v1.LocalObjectReference{Name: cr.Name},
+				Key: "wildfly-admin-password",
 				Optional: &false,
 			},
 		},
