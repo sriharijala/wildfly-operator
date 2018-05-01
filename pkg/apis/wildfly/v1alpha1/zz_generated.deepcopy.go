@@ -95,13 +95,6 @@ func (in *WildflyAppServerStatus) DeepCopyInto(out *WildflyAppServerStatus) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.ExternalAddresses != nil {
-		in, out := &in.ExternalAddresses, &out.ExternalAddresses
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
 	return
 }
 

@@ -1,21 +1,21 @@
 package stub
 
 import (
-	"reflect"
 	"github.com/banzaicloud/wildfly-operator/pkg/apis/wildfly/v1alpha1"
-	"github.com/coreos/operator-sdk/pkg/sdk/action"
-	"github.com/coreos/operator-sdk/pkg/sdk/handler"
-	"github.com/coreos/operator-sdk/pkg/sdk/types"
+	"fmt"
+	"reflect"
+	"github.com/operator-framework/operator-sdk/pkg/sdk/action"
+	"github.com/operator-framework/operator-sdk/pkg/sdk/handler"
+	"github.com/operator-framework/operator-sdk/pkg/sdk/types"
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"fmt"
-	"github.com/coreos/operator-sdk/pkg/sdk/query"
+	"github.com/operator-framework/operator-sdk/pkg/sdk/query"
 	"k8s.io/apimachinery/pkg/labels"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 func NewHandler() handler.Handler {
@@ -25,7 +25,7 @@ func NewHandler() handler.Handler {
 type Handler struct {
 }
 
-const APPLICATION_CONFIG string = "standalone-full-ha-k8s.xml"
+const ApplicationConfig string = "standalone-full-ha-k8s.xml"
 
 func (h *Handler) Handle(ctx types.Context, event types.Event) error {
 	fmt.Printf("Handle: %+v %+v\n", event, event.Object)
@@ -41,7 +41,7 @@ func (h *Handler) Handle(ctx types.Context, event types.Event) error {
 		// Create the deployment if it doesn't exist
 		dep := getDeployment(o)
 		err := action.Create(dep)
-		if err != nil && !apierrors.IsAlreadyExists(err) {
+		if err != nil && !errors.IsAlreadyExists(err) {
 			return fmt.Errorf("failed to create deployment: %v", err)
 		}
 
@@ -79,21 +79,10 @@ func (h *Handler) Handle(ctx types.Context, event types.Event) error {
 		// Create LoadBalancer
 		ser := getService(o)
 		err = action.Create(ser)
-		if err != nil && !apierrors.IsAlreadyExists(err) {
+		if err != nil && !errors.IsAlreadyExists(err) {
 			return fmt.Errorf("failed to create service: %v", err)
 		}
 
-		externalAddress := make(map[string]string)
-		if len(ser.Spec.ExternalIPs) > 0 {
-			externalIp := ser.Spec.ExternalIPs[0]
-			for _, servicePort := range ser.Spec.Ports {
-				address := externalIp + ":" + string(servicePort.NodePort)
-				fmt.Printf("External address: %+v %+v\n", servicePort.Name, address)
-				externalAddress[servicePort.Name] = address
-			}
-		} else {
-			fmt.Printf("No external addresses bound!")
-		}
 	}
 	return nil
 }
@@ -171,7 +160,7 @@ func getDeployment(cr *v1alpha1.WildflyAppServer) *appsv1.Deployment {
 							},
 						},
 						Args: []string{
-							"--server-config=" + APPLICATION_CONFIG,
+							"--server-config=" + ApplicationConfig,
 						},
 						Ports: []v1.ContainerPort{
 							{
@@ -233,14 +222,14 @@ func getDeployment(cr *v1alpha1.WildflyAppServer) *appsv1.Deployment {
 			{
 				Name: "config-volume",
 				VolumeSource: v1.VolumeSource{
-					ConfigMap:  &v1.ConfigMapVolumeSource{
+					ConfigMap: &v1.ConfigMapVolumeSource{
 						LocalObjectReference: v1.LocalObjectReference{
 							Name: cr.Spec.ConfigMapName,
 						},
 						Items: []v1.KeyToPath{
 							{
-								Key: cr.Spec.StandaloneConfigKey,
-								Path: APPLICATION_CONFIG,
+								Key:  cr.Spec.StandaloneConfigKey,
+								Path: ApplicationConfig,
 							},
 						},
 					},
@@ -249,9 +238,9 @@ func getDeployment(cr *v1alpha1.WildflyAppServer) *appsv1.Deployment {
 		}
 		dep.Spec.Template.Spec.Containers[0].VolumeMounts = []v1.VolumeMount{
 			{
-				Name: "config-volume",
-				MountPath: "/opt/jboss/wildfly/standalone/configuration/" + APPLICATION_CONFIG,
-				SubPath: APPLICATION_CONFIG,
+				Name:      "config-volume",
+				MountPath: "/opt/jboss/wildfly/standalone/configuration/" + ApplicationConfig,
+				SubPath:   ApplicationConfig,
 			},
 		}
 	}
@@ -261,8 +250,8 @@ func getDeployment(cr *v1alpha1.WildflyAppServer) *appsv1.Deployment {
 		ValueFrom: &v1.EnvVarSource{
 			SecretKeyRef: &v1.SecretKeySelector{
 				LocalObjectReference: v1.LocalObjectReference{Name: cr.Name},
-				Key: "wildfly-admin-user",
-				Optional: &false,
+				Key:                  "wildfly-admin-user",
+				Optional:             &false,
 			},
 		},
 	})
@@ -272,8 +261,8 @@ func getDeployment(cr *v1alpha1.WildflyAppServer) *appsv1.Deployment {
 		ValueFrom: &v1.EnvVarSource{
 			SecretKeyRef: &v1.SecretKeySelector{
 				LocalObjectReference: v1.LocalObjectReference{Name: cr.Name},
-				Key: "wildfly-admin-password",
-				Optional: &false,
+				Key:                  "wildfly-admin-password",
+				Optional:             &false,
 			},
 		},
 	})

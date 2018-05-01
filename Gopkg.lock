@@ -14,22 +14,6 @@
   revision = "de5bf2ad457846296e2031421a34e2568e304e35"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/coreos/operator-sdk"
-  packages = [
-    "pkg/k8sclient",
-    "pkg/sdk",
-    "pkg/sdk/action",
-    "pkg/sdk/handler",
-    "pkg/sdk/informer",
-    "pkg/sdk/types",
-    "pkg/util/k8sutil",
-    "version"
-  ]
-  revision = "e5822e0456eaba6ebe3e50a0fc032ece58ceb908"
-  source = "github.com/banzaicloud/operator-sdk"
-
-[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -41,8 +25,8 @@
     ".",
     "log"
   ]
-  revision = "92cd0815dd1a028a6e69faee9757c7436238e252"
-  version = "v2.6.1"
+  revision = "2810ccc68e0ca445fa81ebfa03fbf70aca5c41ae"
+  version = "v2.7.0"
 
 [[projects]]
   name = "github.com/ghodss/yaml"
@@ -98,8 +82,8 @@
     "ptypes/duration",
     "ptypes/timestamp"
   ]
-  revision = "925541529c1fa6821df4e44ce2723319eb2be768"
-  version = "v1.0.0"
+  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -176,6 +160,21 @@
   version = "1.0.0"
 
 [[projects]]
+  name = "github.com/operator-framework/operator-sdk"
+  packages = [
+    "pkg/k8sclient",
+    "pkg/sdk",
+    "pkg/sdk/action",
+    "pkg/sdk/handler",
+    "pkg/sdk/informer",
+    "pkg/sdk/types",
+    "pkg/util/k8sutil",
+    "version"
+  ]
+  revision = "31577c9d90b99b63043d2014de8fb2dd855aee78"
+  version = "v0.0.5"
+
+[[projects]]
   branch = "master"
   name = "github.com/petar/GoLLRB"
   packages = ["llrb"]
@@ -203,7 +202,7 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "e73bf333ef8920dbb52ad18d4bd38ad9d9bc76d7"
+  revision = "ae8bce0030810cf999bb2b9868ae5c7c58e6343b"
 
 [[projects]]
   branch = "master"
@@ -225,7 +224,7 @@
     "unix",
     "windows"
   ]
-  revision = "79b0c6888797020a994db17c8510466c72fe75d9"
+  revision = "78d5f264b493f125018180c204871ecf58a2dce1"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -399,11 +398,11 @@
   branch = "master"
   name = "k8s.io/kube-openapi"
   packages = ["pkg/common"]
-  revision = "1e45fb05b06309c0d807d0930e1a81fe0a1cd4b8"
+  revision = "3a0c53868c9444e4224c3dd5dc2caa9b5107ff7b"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9fabcbbf74150a484c9d91d9a9c109b7d9303f2ff9ea8f33a2054edce7fe174d"
+  inputs-digest = "daec715c0e3dc34ea7418be784fb1a150178ea6236406a47459b7d3533125517"
   solver-name = "gps-cdcl"
   solver-version = 1

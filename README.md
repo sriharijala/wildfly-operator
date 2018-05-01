@@ -33,7 +33,7 @@ Example `Secret` containing credentials for Wildfly server:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: "jboss-secret"
+  name: "wildfly-example"
 type: Opaque
 data:
   wildfly-admin-user: "YOUR_USERNAME_IN_BASE_64_ENCODED_FROM"
@@ -67,13 +67,13 @@ kubectl get WildflyAppServer
 kubectl describe WildflyAppServer
 ```
 
-***Check load balancer service***
+***Check LoadBalancer is available***
 
 ```
 kubectl get svc
 ```
 
-
+There should be a `wildfly-example` LoadBalancer with an external IP associated. Applications and Wildfly Management Console are reachable through this external IP.
 
 
 

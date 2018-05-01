@@ -4,9 +4,30 @@ metadata:
   name: wildfly-operator
 rules:
 - apiGroups:
-  - "*"
+  - wildfly.banzaicloud.com
   resources:
   - "*"
+  verbs:
+  - "*"
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - services
+  - endpoints
+  - persistentvolumeclaims
+  - events
+  - configmaps
+  - secrets
+  verbs:
+  - "*"
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - daemonsets
+  - replicasets
+  - statefulsets
   verbs:
   - "*"
 
