@@ -67,13 +67,19 @@ kubectl get WildflyAppServer
 kubectl describe WildflyAppServer
 ```
 
-***Check LoadBalancer is available***
-
 ```
-kubectl get svc
+Status:
+  External Addresses:
+    Application:  35.232.66.116:8080
+    Management:   35.232.66.116:9990
+  Nodes:
+    wildfly-example-84b5986dbf-gxhbv
+    wildfly-example-84b5986dbf-zvwml
 ```
 
-There should be a `wildfly-example` LoadBalancer with an external IP associated. Applications and Wildfly Management Console are reachable through this external IP.
+In status you should find external addresses, once the `Loadbalancer` has been created.
+Applications and Wildfly Management Console are reachable through listed external IP/port.
+
 
 
 

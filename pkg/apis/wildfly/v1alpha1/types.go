@@ -7,18 +7,18 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type WildflyAppServerList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-	Items           []WildflyAppServer `json:"items"`
+	metav1.TypeMeta          `json:",inline"`
+	metav1.ListMeta          `json:"metadata"`
+	Items []WildflyAppServer `json:"items"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type WildflyAppServer struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata"`
-	Spec              WildflyAppServerSpec   `json:"spec"`
-	Status            WildflyAppServerStatus `json:"status,omitempty"`
+	metav1.TypeMeta               `json:",inline"`
+	metav1.ObjectMeta             `json:"metadata"`
+	Spec   WildflyAppServerSpec   `json:"spec"`
+	Status WildflyAppServerStatus `json:"status,omitempty"`
 }
 
 type WildflyAppServerSpec struct {
@@ -30,4 +30,5 @@ type WildflyAppServerSpec struct {
 
 type WildflyAppServerStatus struct {
 	Nodes             []string          `json:"nodes"`
+	ExternalAddresses map[string]string `json:"externalAddresses"`
 }

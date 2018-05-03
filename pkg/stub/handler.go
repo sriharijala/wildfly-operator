@@ -16,6 +16,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"github.com/operator-framework/operator-sdk/pkg/sdk/query"
 	"k8s.io/apimachinery/pkg/labels"
+	"time"
+	"strconv"
+	"github.com/sirupsen/logrus"
 )
 
 func NewHandler() handler.Handler {
@@ -25,10 +28,12 @@ func NewHandler() handler.Handler {
 type Handler struct {
 }
 
-const ApplicationConfig string = "standalone-full-ha-k8s.xml"
+const ApplicationConfig = "standalone-full-ha-k8s.xml"
+const ApplicationHttpPort int32 = 8080
+const ManagementHttpPort int32 = 9990
 
 func (h *Handler) Handle(ctx types.Context, event types.Event) error {
-	fmt.Printf("Handle: %+v %+v\n", event, event.Object)
+	logrus.Infof("Handle: %+v %+v\n", event, event.Object)
 	switch o := event.Object.(type) {
 	case *v1alpha1.WildflyAppServer:
 
@@ -72,7 +77,7 @@ func (h *Handler) Handle(ctx types.Context, event types.Event) error {
 			o.Status.Nodes = podNames
 			err := action.Update(o)
 			if err != nil {
-				return fmt.Errorf("failed to update infinispan status: %v", err)
+				return fmt.Errorf("failed to update nodes status: %v", err)
 			}
 		}
 
@@ -83,6 +88,53 @@ func (h *Handler) Handle(ctx types.Context, event types.Event) error {
 			return fmt.Errorf("failed to create service: %v", err)
 		}
 
+		if len(o.Status.ExternalAddresses) == 0 {
+			err = updateExternalAddresses(o)
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+	return nil
+}
+
+func updateExternalAddresses(o *v1alpha1.WildflyAppServer) error {
+	o.Status.ExternalAddresses = make(map[string]string)
+	for i := 0; i < 30; i++ {
+		logrus.Infof("Checking for Loadbalancer ...")
+
+		ser := &v1.Service{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Service",
+				APIVersion: "v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: o.Name,
+				Namespace: o.Namespace,
+			},
+		}
+		err := query.Get(ser)
+		if err != nil {
+			return fmt.Errorf("failed to retrive Loadbalancer status: %v", err)
+		}
+
+		if len(ser.Status.LoadBalancer.Ingress) > 0 && len(ser.Status.LoadBalancer.Ingress[0].IP) > 0 {
+			logrus.Infof("found at external address: %+v", ser.Status.LoadBalancer.Ingress[0].IP)
+			o.Status.ExternalAddresses["application"] = ser.Status.LoadBalancer.Ingress[0].IP + ":" + strconv.Itoa(int(ApplicationHttpPort))
+			o.Status.ExternalAddresses["management"] = ser.Status.LoadBalancer.Ingress[0].IP + ":" + strconv.Itoa(int(ManagementHttpPort))
+
+			err := action.Update(o)
+			if err != nil {
+				return fmt.Errorf("failed to update nodes status: %v", err)
+			}
+
+			return nil
+		} else {
+			logrus.Infof("not found")
+		}
+
+		time.Sleep(time.Duration(10 * time.Second))
 	}
 	return nil
 }
@@ -164,11 +216,11 @@ func getDeployment(cr *v1alpha1.WildflyAppServer) *appsv1.Deployment {
 						},
 						Ports: []v1.ContainerPort{
 							{
-								ContainerPort: 8080,
+								ContainerPort: ApplicationHttpPort,
 								Name:          "http",
 							},
 							{
-								ContainerPort: 9990,
+								ContainerPort: ManagementHttpPort,
 								Name:          "management",
 							},
 							{
@@ -308,11 +360,11 @@ func getService(cr *v1alpha1.WildflyAppServer) *v1.Service {
 			Ports: []v1.ServicePort{
 				{
 					Name: "http",
-					Port: 8080,
+					Port: ApplicationHttpPort,
 				},
 				{
 					Name: "management",
-					Port: 9990,
+					Port: ManagementHttpPort,
 				},
 			},
 		},
