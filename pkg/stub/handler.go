@@ -19,6 +19,8 @@ import (
 	"time"
 	"strconv"
 	"github.com/sirupsen/logrus"
+	"bytes"
+	"text/template"
 )
 
 func NewHandler() handler.Handler {
@@ -33,7 +35,7 @@ const ApplicationHttpPort int32 = 8080
 const ManagementHttpPort int32 = 9990
 
 func (h *Handler) Handle(ctx types.Context, event types.Event) error {
-	logrus.Infof("Handle: %+v %+v\n", event, event.Object)
+	logrus.Infof("Handle2: %+v %+v\n", event, event.Object)
 	switch o := event.Object.(type) {
 	case *v1alpha1.WildflyAppServer:
 
@@ -41,6 +43,14 @@ func (h *Handler) Handle(ctx types.Context, event types.Event) error {
 		// All secondary resources must have the CR set as their OwnerReference for this to be the case
 		if event.Deleted {
 			return nil
+		}
+
+		if len(o.Spec.DataSourceConfig) > 0 && len(o.Spec.ConfigMapName) == 0 {
+			configMap := getConfigMap(o)
+			err := action.Create(configMap)
+			if err != nil && !errors.IsAlreadyExists(err) {
+				return fmt.Errorf("failed to create configmap: %v", err)
+			}
 		}
 
 		// Create the deployment if it doesn't exist
@@ -99,9 +109,51 @@ func (h *Handler) Handle(ctx types.Context, event types.Event) error {
 	return nil
 }
 
+func getConfigMap(o *v1alpha1.WildflyAppServer) *v1.ConfigMap {
+
+	logrus.Info("create config map ...")
+
+	partTpl, err := template.ParseFiles("/usr/local/wildfly-operator-config.xml")
+	if err != nil {
+		logrus.Errorf("couldn't parse the submit command template, err: %s", err)
+		return nil
+	}
+
+	var out bytes.Buffer
+	//config := map[string]map[string]string{
+	//	"mariadb": {
+	//		"hostname": "h",
+	//		"databaseName": "pet",
+	//	},
+	//}
+	err = partTpl.ExecuteTemplate(&out, "wildfly-operator-config.xml", o.Spec.DataSourceConfig)
+	if err != nil {
+		logrus.Errorf("couldn't execute the config template, err: %s", err)
+		return nil
+	}
+
+	configMap := &v1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ConfigMap",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: o.Name,
+			Namespace: o.Namespace,
+		},
+		Data: map[string]string {
+			"standalone.xml":  string(out.Bytes()),
+		},
+	}
+	o.Spec.ConfigMapName = o.Name
+	o.Spec.StandaloneConfigKey = "standalone.xml"
+
+	return configMap
+}
+
 func updateExternalAddresses(o *v1alpha1.WildflyAppServer) error {
 	o.Status.ExternalAddresses = make(map[string]string)
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 10; i++ {
 		logrus.Infof("Checking for Loadbalancer ...")
 
 		ser := &v1.Service{
@@ -193,6 +245,7 @@ func getDeployment(cr *v1alpha1.WildflyAppServer) *appsv1.Deployment {
 					Labels: labelMap,
 				},
 				Spec: v1.PodSpec{
+					RestartPolicy: v1.RestartPolicyAlways,
 					Containers: []v1.Container{{
 						Image: image,
 						Name:  appName,
@@ -235,11 +288,11 @@ func getDeployment(cr *v1alpha1.WildflyAppServer) *appsv1.Deployment {
 						LivenessProbe: &v1.Probe{
 							Handler: v1.Handler{
 								HTTPGet: &v1.HTTPGetAction{
-									Path: "/",
+									Path: "/" + cr.Spec.ApplicationPath,
 									Port: intstr.FromString("http"),
 								},
 							},
-							InitialDelaySeconds: 120,
+							InitialDelaySeconds: 60,
 							TimeoutSeconds:      5,
 							PeriodSeconds:       60,
 							SuccessThreshold:    1,
@@ -296,6 +349,7 @@ func getDeployment(cr *v1alpha1.WildflyAppServer) *appsv1.Deployment {
 			},
 		}
 	}
+
 	false := true
 	dep.Spec.Template.Spec.Containers[0].Env = append(dep.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 		Name: "WILDFLY_ADMIN_USER",

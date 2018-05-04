@@ -21,10 +21,18 @@ metadata:
 spec:
   nodeCount: 2
   image: "banzaicloud/wildfly-demo:0.0.51"
+  applicationPath: "applicationPetstore"
   labels:
       app: my-label
   configMapName: standalone
   standaloneConfigKey: standalone-full-ha-k8s.xml
+  dataSourceConfig:
+    mariadb:
+      hostName: "demo-mariadb"
+      databaseName: "petstore"
+      jndiName: "java:jboss/datasources/ExampleDS"
+      user: "xxxxxxxx"
+      password: "xxxxxxxx"
 ```
 
 Example `Secret` containing credentials for Wildfly server:
@@ -47,7 +55,11 @@ Resource params:
     - spec.nodeCount : number of server nodes to run
     - spec.configMapName : name of ConfigMap containing standalone.xml config (optional) 
     - spec.standaloneConfigKey : key name containing standalone.xml config in ConfigMap (optional) 
-
+    - spec.applicationPath : web application path, used for HTTP liveness probe 
+    - spec.dataSourceConfig : optional datasource config, which will be set up in case no custom config and `ConfigMap` is provided in `spec.configMapName`, `spec.standaloneConfigKey`. 
+        Currently only mariadb is supported.
+    
+    
 ***Deploy operator and custom resource***
 
 ```

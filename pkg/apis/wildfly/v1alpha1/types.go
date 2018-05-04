@@ -22,10 +22,20 @@ type WildflyAppServer struct {
 }
 
 type WildflyAppServerSpec struct {
-	NodeCount           int32  `json:"nodeCount"`
-	Image               string `json:"image"`
-	ConfigMapName       string `json:"configMapName,omitempty"`
-	StandaloneConfigKey string `json:"standaloneConfigKey,omitempty"`
+	NodeCount           int32                     `json:"nodeCount"`
+	Image               string                    `json:"image"`
+	ApplicationPath     string                    `json:"applicationPath"`
+	ConfigMapName       string                    `json:"configMapName,omitempty"`
+	StandaloneConfigKey string                    `json:"standaloneConfigKey,omitempty"`
+	DataSourceConfig    map[string]DataSourceSpec `json:"dataSourceConfig"`
+}
+
+type DataSourceSpec struct {
+	HostName     string `json:"hostName"`
+	DatabaseName string `json:"databaseName"`
+	JndiName     string `json:"jndiName"`
+	User         string `json:"user,omitempty"`
+	Password     string `json:"password,omitempty"`
 }
 
 type WildflyAppServerStatus struct {
