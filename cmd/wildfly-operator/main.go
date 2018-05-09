@@ -20,6 +20,7 @@ func printVersion() {
 func main() {
 	printVersion()
 	sdk.Watch("wildfly.banzaicloud.com/v1alpha1", "WildflyAppServer", "default", 5)
+	sdk.Watch("v1", "Service", "default", 5)
 	sdk.Handle(stub.NewHandler())
 	sdk.Run(context.TODO())
 }

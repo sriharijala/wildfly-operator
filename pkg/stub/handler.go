@@ -16,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"github.com/operator-framework/operator-sdk/pkg/sdk/query"
 	"k8s.io/apimachinery/pkg/labels"
-	"time"
 	"strconv"
 	"github.com/sirupsen/logrus"
 	"bytes"
@@ -31,12 +30,71 @@ type Handler struct {
 }
 
 const ApplicationConfig = "standalone-full-ha-k8s.xml"
+const WildflyAppServer = "WildflyAppServer"
 const ApplicationHttpPort int32 = 8080
 const ManagementHttpPort int32 = 9990
 
 func (h *Handler) Handle(ctx types.Context, event types.Event) error {
-	logrus.Infof("Handle2: %+v %+v\n", event, event.Object)
+	logrus.Infof("Handle: %+v %+v\n", event, event.Object)
 	switch o := event.Object.(type) {
+	case *v1.Service:
+
+		// Ignore the delete event since the garbage collector will clean up all secondary resources for the CR
+		if event.Deleted {
+			return nil
+		}
+
+		for _, ref := range o.OwnerReferences {
+			if ref.Kind == WildflyAppServer {
+				logrus.Infof("found service")
+				var hostname string
+				if len(o.Status.LoadBalancer.Ingress) > 0 {
+					if len(o.Status.LoadBalancer.Ingress[0].Hostname) > 0 {
+						hostname = o.Status.LoadBalancer.Ingress[0].Hostname
+					} else if len(o.Status.LoadBalancer.Ingress[0].IP) > 0 {
+						hostname = o.Status.LoadBalancer.Ingress[0].IP
+					}
+					if len(hostname) > 0 {
+						logrus.Infof("found external address: %+v", hostname)
+
+						wildfly := &v1alpha1.WildflyAppServer{
+							TypeMeta: metav1.TypeMeta{
+								Kind:       ref.Kind,
+								APIVersion: ref.APIVersion,
+							},
+							ObjectMeta: metav1.ObjectMeta{
+								Name: ref.Name,
+								Namespace: o.Namespace,
+							},
+						}
+						err := query.Get(wildfly)
+						if err != nil {
+							return fmt.Errorf("failed to retrive Loadbalancer status: %v", err)
+						}
+
+						if len(wildfly.Status.ExternalAddresses) == 0 {
+							wildfly.Status.ExternalAddresses = make(map[string]string)
+
+							wildfly.Status.ExternalAddresses["application"] = hostname + ":" + strconv.Itoa(int(ApplicationHttpPort))
+							wildfly.Status.ExternalAddresses["management"] = hostname + ":" + strconv.Itoa(int(ManagementHttpPort))
+
+							err = action.Update(wildfly)
+							if err != nil {
+								return fmt.Errorf("failed to update nodes status: %v", err)
+							}
+						}
+
+					}
+				}
+				if len(hostname) == 0 {
+					logrus.Infof("service not found")
+				}
+				return nil
+			}
+		}
+
+		return nil
+
 	case *v1alpha1.WildflyAppServer:
 
 		// Ignore the delete event since the garbage collector will clean up all secondary resources for the CR
@@ -98,13 +156,6 @@ func (h *Handler) Handle(ctx types.Context, event types.Event) error {
 			return fmt.Errorf("failed to create service: %v", err)
 		}
 
-		if len(o.Status.ExternalAddresses) == 0 {
-			err = updateExternalAddresses(o)
-			if err != nil {
-				return err
-			}
-		}
-
 	}
 	return nil
 }
@@ -120,12 +171,6 @@ func getConfigMap(o *v1alpha1.WildflyAppServer) *v1.ConfigMap {
 	}
 
 	var out bytes.Buffer
-	//config := map[string]map[string]string{
-	//	"mariadb": {
-	//		"hostname": "h",
-	//		"databaseName": "pet",
-	//	},
-	//}
 	err = partTpl.ExecuteTemplate(&out, "wildfly-operator-config.xml", o.Spec.DataSourceConfig)
 	if err != nil {
 		logrus.Errorf("couldn't execute the config template, err: %s", err)
@@ -149,46 +194,6 @@ func getConfigMap(o *v1alpha1.WildflyAppServer) *v1.ConfigMap {
 	o.Spec.StandaloneConfigKey = "standalone.xml"
 
 	return configMap
-}
-
-func updateExternalAddresses(o *v1alpha1.WildflyAppServer) error {
-	o.Status.ExternalAddresses = make(map[string]string)
-	for i := 0; i < 10; i++ {
-		logrus.Infof("Checking for Loadbalancer ...")
-
-		ser := &v1.Service{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Service",
-				APIVersion: "v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name: o.Name,
-				Namespace: o.Namespace,
-			},
-		}
-		err := query.Get(ser)
-		if err != nil {
-			return fmt.Errorf("failed to retrive Loadbalancer status: %v", err)
-		}
-
-		if len(ser.Status.LoadBalancer.Ingress) > 0 && len(ser.Status.LoadBalancer.Ingress[0].IP) > 0 {
-			logrus.Infof("found at external address: %+v", ser.Status.LoadBalancer.Ingress[0].IP)
-			o.Status.ExternalAddresses["application"] = ser.Status.LoadBalancer.Ingress[0].IP + ":" + strconv.Itoa(int(ApplicationHttpPort))
-			o.Status.ExternalAddresses["management"] = ser.Status.LoadBalancer.Ingress[0].IP + ":" + strconv.Itoa(int(ManagementHttpPort))
-
-			err := action.Update(o)
-			if err != nil {
-				return fmt.Errorf("failed to update nodes status: %v", err)
-			}
-
-			return nil
-		} else {
-			logrus.Infof("not found")
-		}
-
-		time.Sleep(time.Duration(10 * time.Second))
-	}
-	return nil
 }
 
 // podList returns a v1.PodList object
@@ -381,7 +386,7 @@ func setOwnerRefrence(obj metav1.Object, cr *v1alpha1.WildflyAppServer) {
 	ownerRef := *metav1.NewControllerRef(cr, schema.GroupVersionKind{
 		Group:   v1alpha1.SchemeGroupVersion.Group,
 		Version: v1alpha1.SchemeGroupVersion.Version,
-		Kind:    "WildflyAppServer",
+		Kind:    WildflyAppServer,
 	})
 	obj.SetOwnerReferences(append(obj.GetOwnerReferences(), ownerRef))
 }
