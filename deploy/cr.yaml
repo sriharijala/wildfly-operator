@@ -6,7 +6,7 @@ metadata:
     app: my-label
 spec:
   nodeCount: 2
-  image: "banzaicloud/wildfly-jee-petstore:0.1.6"
+  image: "banzaicloud/wildfly-jee-petstore:0.1.15"
   applicationPath: "applicationPetstore"
   labels:
     app: my-label

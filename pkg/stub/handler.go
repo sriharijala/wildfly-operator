@@ -123,14 +123,16 @@ func (h *Handler) Handle(ctx types.Context, event types.Event) error {
 		if err != nil {
 			return fmt.Errorf("failed to get deployment: %v", err)
 		}
-		size := o.Spec.NodeCount
-		if *dep.Spec.Replicas != size {
-			dep.Spec.Replicas = &size
-			err = action.Update(dep)
-			if err != nil {
-				return fmt.Errorf("failed to update deployment: %v", err)
-			}
-		}
+
+		// Don't update replica count size, let HPA update it
+		//size := o.Spec.NodeCount
+		//if *dep.Spec.Replicas != size {
+		//	dep.Spec.Replicas = &size
+		//	err = action.Update(dep)
+		//	if err != nil {
+		//		return fmt.Errorf("failed to update deployment: %v", err)
+		//	}
+		//}
 
 		// Update the WildflyAppServer status with the pod names
 		podList := podList()
@@ -248,6 +250,10 @@ func getDeployment(cr *v1alpha1.WildflyAppServer) *appsv1.Deployment {
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labelMap,
+					Annotations: map[string]string {
+						"prometheus.io/scrape": "true",
+						"prometheus.io/port": "9090",
+					},
 				},
 				Spec: v1.PodSpec{
 					RestartPolicy: v1.RestartPolicyAlways,
