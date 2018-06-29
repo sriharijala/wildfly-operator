@@ -1,7 +1,7 @@
 apiVersion: autoscaling/v2beta1
 kind: HorizontalPodAutoscaler
 metadata:
-  name: podinfo
+  name: wildfly-example
 spec:
   scaleTargetRef:
     apiVersion: extensions/v1beta1
@@ -13,4 +13,4 @@ spec:
   - type: Pods
     pods:
       metricName: org_xnio_Xnio_BusyWorkerThreadCount
-      targetAverageValue: 10
+      targetAverageValue: 20

@@ -274,6 +274,11 @@ func getDeployment(cr *v1alpha1.WildflyAppServer) *appsv1.Deployment {
 								Name:  "KUBERNETES_LABELS",
 								Value: labelSelector,
 							},
+							{
+								Name:  "JAVA_MEM_OPTS",
+								Value: "-Xms256m -Xmx2048m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m",
+							},
+
 						},
 						Args: []string{
 							"--server-config=" + ApplicationConfig,
