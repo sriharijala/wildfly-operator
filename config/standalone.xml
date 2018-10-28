@@ -157,7 +157,7 @@
                      </security>
                 </datasource>
                 {{- if .mariadb -}}
-                <datasource jndi-name="{{ .mariadb.JndiName }}" pool-name="mariaDBPool" enabled="true" use-java-context="true">
+                <datasource jndi-name="java:jboss/datasources/{{ .mariadb.JndiName }}" pool-name="mariaDBPool" enabled="true" use-java-context="true">
                     <connection-url>jdbc:mariadb://{{ .mariadb.HostName }}:3306/{{ .mariadb.DatabaseName }}?useUnicode=yes&amp;characterEncoding=UTF-8</connection-url>
                     <driver>mariadb</driver>
                     <security>
